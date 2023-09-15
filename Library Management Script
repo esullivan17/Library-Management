@@ -1,0 +1,380 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Dec 15 12:58:19 2021
+
+@author: esull
+"""
+
+'''
+
+FINAL PROJECT COLLABORATION MEMBERS:
+    
+ETHAN SULLIVAN
+EVAN SETTIPANE
+LIAM ROUTCH
+
+
+'''
+def main():
+    query=input('what action would you like to perform: \nborrow\npopular\nfine\n ')
+    if query=='borrow':
+        student=input("enter your name\n")
+        date=input('enter the date\n')
+        bookname=input('enter book name \n')
+        days=input("enter how long you would like to rent book for \n")
+        borrow(date,bookname,student,days)
+    if query=='popular':
+        popular()
+    if query=='fine':
+        date=input('enter the date ')
+        fine(date)
+
+        
+def borrow(date,bookname,student,days):
+    #this function essentially keeps tabs on each book (when they are 
+    #rented out, who is renting them and if they accrue a fine) so then the student who is
+    #borrowing knows if they can borrow a book
+    running_dict={}
+    runningdays=0
+    booklist=[]
+    lengthcheck=open("librarylog-3.txt","r")
+    c=lengthcheck.readline()
+    while c!="":
+        if len(c)<4:
+            length=int(c)-1
+        c=lengthcheck.readline()
+    numdays=int(days)
+    numdate=int(date)
+    isvalid=False
+    isValid=False
+    #base book info----------------------------------
+    bread= open("booklist-2.txt","r")
+    b=bread.readline()
+    book_dict={}
+    restricted_dict={}
+    while b != '':
+        bsplit=b.split("#")
+        book_dict[bsplit[0]]=int(bsplit[1])
+        if bsplit[0] not in running_dict:
+            amount=int(bsplit[1])
+            runningdays=length*amount
+            running_dict[bsplit[0]]=runningdays
+        booklist.append(bsplit[0])
+        if bookname in b and "TRUE" in b:
+            restricted=True
+        elif bookname in b and "FALSE" in b:
+            restricted =False
+        restricted_dict[bsplit[0]]=bsplit[2]
+        b=bread.readline()
+    bread.close()
+    if bookname in book_dict:
+        amount=book_dict[bookname]
+    else:
+        amount=0
+    #----------------------------------------------
+    #library day system ---------------------
+    daystop=False
+    lread= open("librarylog-3.txt","r")
+    zread=open("librarylog-3.txt","r")
+    l=lread.readline()
+    n=open("shortlog.txt","w")
+    
+    while daystop==False:
+        while l !='':
+            if len(l)<4 and numdate>length:
+                daystop=True
+            else:
+                if "#" in l:
+                    daylist=l.split("#")
+                    if int(daylist[1])>=numdate:
+                        daystop=True
+                    else:
+                        n.write(l)
+            l=lread.readline()
+    lread.close()
+    n.close()
+    #-------------------------------------------
+    #working with new log 
+    shortread=open("shortlog.txt","r")
+    s=shortread.readline()
+    temp=''
+    returndate=0
+    predict={}
+    fine_dict={}
+    fine_dict[student]=0
+    predate=0
+    finevalid=True
+    fine=0
+    while s != '':
+        # if a book is borrwed, it decreases 1 copy
+        if s[0]=="B" and bookname in s:
+            amount-=1
+ 
+            #if the student in question borrows a book, we keep track of how long they have it
+            #by assigning a value to when we expect the book to be returned
+        if s[0]=="B" and student in s:
+            amount-=1
+            presplit=s.split("#")
+            temp=presplit[-1]
+            temp.rstrip("\n")
+            presplit[-1]=int(temp)
+            temp=int(presplit[1])
+            presplit[1]=temp
+            #print(presplit)
+            predate=presplit[1]+presplit[-1]
+            predict[presplit[3]]=predate
+          #this section has two parts. In any case, when a book is returned, 1 copy is added back
+          #if the student in question is returning a book, we check the date the book is expected 
+         #back and check the current day. If it's late, we assign the appropriate fine
+        if s[0]=="R" and bookname in s:
+            amount+=1
+            r=s.split("#")
+            if r[2]==student:
+                returnsplit=s.split("#")
+                temp=returnsplit[-1].rstrip("\n")
+                returnsplit[-1]=temp
+                returndate=int(returnsplit[1])
+                if returndate>predict[returnsplit[-1]]:
+                    finevalid=False
+                    if restricted_dict[returnsplit[-1]]=="TRUE\n":
+                        temp=predict[returnsplit[-1]]
+                        fine=5*(returndate-temp)
+                    elif restricted_dict[returnsplit[-1]]=="FALSE\n":
+                        temp=predict[returnsplit[-1]]
+                        fine=(returndate-temp)
+                fine_dict[student]=fine_dict[student]+fine
+                
+         #adds a book to the log, adds 1 copy and assigns restricted status       
+        if s[0]=="A":
+            asplit=s.split("#")
+            temp=asplit[-1]
+            temp=temp.rstrip("\n")
+            booklist.append(temp)
+            
+            if temp not in book_dict:
+                book_dict[temp]=1
+                amount+=1
+                runningdays=length-int(asplit[1])+1
+                running_dict[temp]=runningdays
+                restricted=False
+            else:
+                book_dict[temp]=book_dict[temp]+1
+                runningdays=length*(book_dict[temp]+1)
+                #fine_dict[student]=fine_dict[student]-temp
+        #if the student accrued a fine, this subtracts the fine. Determines if they can 
+        #borrow a book or not
+        if s[0]=="P" and student in s:
+            p=s.split("#")
+            temp=p[-1]
+            temp=temp.rstrip("\n")
+            temp=int(temp)
+            if fine_dict[student]==0:
+                finevalid=True
+            
+        s=shortread.readline()
+    #checks borrow status
+    if restricted==True and numdays>7:
+        isvalid=False
+    elif restricted==True and numdays<=7:
+        isvalid=True
+    elif restricted==False and numdays>28:
+        isvalid=False 
+    else:
+        isvalid=True
+    
+    if amount <1:
+        isValid=False
+    else:
+        isValid=True
+    
+    if isvalid==False or isValid==False or finevalid==False:
+        print(student + ' cannot borrow ' + bookname + " on day " +date+ ' for '+days+ ' days')
+    else:
+        print(student + ' can borrow ' + bookname + " on day " +date+ ' for '+days+ ' days')
+
+    print('\n')
+    print('fine notation is ',end='')
+    print(fine_dict)
+    print('copies available: ',end='')
+    print(amount)
+    #running_dict is used for usage percentage in popular()
+    return running_dict
+
+def popular():
+    #popular() keeps track of how long a book is borrowed for
+    restricted_dict={}
+    fine_dict={}
+    booklist=[]
+    ownership={}
+    book_dict={}
+    bread=open("booklist-2.txt","r")
+    b=bread.readline()
+    while b!='':
+        bsplit=b.split("#")
+        book_dict[bsplit[0]]=0
+        b=bread.readline()
+        status=bsplit[-1]
+        status=status.rstrip("\n")
+        if status=="TRUE":
+            restricted_dict[bsplit[0]]=True
+        else:
+            restricted_dict[bsplit[0]]=False
+        booklist.append(bsplit[0])
+    lread=open("librarylog-3.txt","r")
+    l=lread.readline()
+    lengthcheck=open("librarylog-3.txt","r")
+    c=lengthcheck.readline()
+    while c!="":
+        if len(c)<4:
+            length=int(c)
+        c=lengthcheck.readline()
+    print(length)
+    temp=0
+    temp1=0
+    templist=[]
+    while l!='':
+        templist=[]
+        if l[0]=="B":
+            bsplit=l.split("#")
+            booknam=bsplit[3]
+            temp=bsplit[-1]
+            temp.rstrip("\n")
+            temp=int(temp)
+            templist.append(temp)
+            temp1=int(bsplit[1])
+            expecteddate=temp1+temp
+            if expecteddate>length:
+                temp1=expecteddate-length
+                #expecteddate=temp-temp1
+                book_dict[booknam]=book_dict[booknam]-temp1
+            templist.append(expecteddate)
+            if bsplit[2] not in ownership:
+                ownership[bsplit[2]]={}
+            ownership[bsplit[2]][booknam]=templist
+            book_dict[bsplit[3]]=book_dict[bsplit[3]]+temp
+
+        if l[0]=="R":
+            rsplit=l.split("#")
+            tempbook=rsplit[-1].rstrip("\n")
+            #tempdays=ownership[rsplit[2]][tempbook]
+            tempdate=int(rsplit[1])
+            tempexpected=ownership[rsplit[2]][tempbook]
+            tempexpected=tempexpected[1]
+            daysout=tempdate-tempexpected
+            if daysout>0:
+                book_dict[tempbook]=book_dict[tempbook]+daysout
+        if l[0]=="A":
+            a=l.split("#")
+            temp=a[-1]
+            temp=temp.rstrip("\n")
+            book_dict[temp]=0
+            booklist.append(temp)
+        l=lread.readline()
+    ranking=book_dict
+    usage_percentage={}
+    
+    #this is just to run a generic borrow function, for it keeps tabs on each book
+    date='1000'
+    bookname=''
+    student=''
+    days='2'
+    dub=borrow(date,bookname,student,days)
+    
+    
+    for f in range(0,len(booklist)):
+        usage_percentage[booklist[f]]=(ranking[booklist[f]]/dub[booklist[f]])*100
+    print('\n')
+    print(ranking)
+    print('\n')
+    print(usage_percentage)
+            
+            
+            
+def fine(date):
+    # fine() is similar to borrow, but now it keeps track of everyone's fines instead of just 
+    #the student in question
+    numdate=int(date)
+    fine=0
+    restricted_dict={}
+    fine_dict={}
+    booklist=[]
+    ownership={}
+    #new stuff
+    bread=open("booklist-2.txt","r")
+    b=bread.readline()
+    while b!='':
+        bsplit=b.split("#")
+        #new fine stuff
+        status=bsplit[-1]
+        status=status.rstrip("\n")
+        if status=="TRUE":
+            restricted_dict[bsplit[0]]=True
+        else:
+            restricted_dict[bsplit[0]]=False
+        booklist.append(bsplit[0])
+        b=bread.readline()
+        #new fine stuff
+
+
+    zread=open("librarylog-3.txt","r")
+    z=zread.readline()
+    while z!="":
+        fine=0
+        #print(fine_dict)
+        daylist=z.split("#")
+        if len(daylist)<3:
+            break
+        daystop=daylist[1]
+        daystop=int(daystop)
+        if daystop>numdate:
+            break
+        if z[0]=="A":
+            a=z.split("#")
+            bookname=a[-1]
+            bookname=bookname.rstrip("\n")
+            if bookname not in restricted_dict:
+                restricted_dict[bookname]=False
+                booklist.append(bookname)
+        
+        if z[0]=="B":
+            dsplit=z.split("#")
+            temp=dsplit[-1]
+            temp=temp.rstrip("\n")
+            temp=int(temp)
+            temp1=dsplit[1]
+            temp1=int(temp1)
+            dayexpected=temp1+temp
+            name=dsplit[2]
+            bookname=dsplit[3]
+            if name not in ownership:
+                ownership[name]={}
+                ownership[name][bookname]=dayexpected
+            else:
+                ownership[name][bookname]=dayexpected
+            #should really only be applied once
+            if name not in fine_dict:
+                fine_dict[name]=0
+        if z[0]=="R":
+            r=z.split("#")
+            date=r[1]
+            date=int(date)
+            name=r[2]
+            bookname=r[-1]
+            bookname=bookname.rstrip("\n")
+            returndate=date-ownership[name][bookname]
+            if returndate>0:
+                if restricted_dict[bookname]==True:
+                    fine=5*returndate
+                else:
+                    fine=returndate
+            fine_dict[name]=fine_dict[name]+fine
+        if z[0]=="P":
+            p=z.split("#")
+            name=p[2]
+            payment=p[-1]
+            payment.rstrip("\n")
+            payment=int(payment)
+            fine_dict[name]=fine_dict[name]-payment
+        z=zread.readline()
+    print(fine_dict)
+   
